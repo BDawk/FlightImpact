@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlightImpact - Coming Soon</title>
+    <style>
+      html {
+        height: 100%;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Helvetica Neue', sans-serif;
+        height: 100%;
+        margin: 15% 0 0 0;
+        background: black
+          linear-gradient(
+            135deg,
+            rgba(16, 43, 86, 0.741),
+            rgba(50, 130, 69, 0.191)
+          );
+        overflow: hidden;
+      }
+      div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        color: #fff;
+      }
+      img {
+        max-width: 200px;
+        margin-bottom: 50px;
+        animation: pulse 5s infinite;
+      }
+      h1 {
+        font-size: 2em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: -5px;
+        color: #ffffffec;
+      }
+      h1 span {
+        font-size: 1em;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        color: #ffd900b6;
+      }
+      p {
+        font-size: 1.2em;
+        opacity: 0.9;
+        color: #ffffffda;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <img src="logo.png" alt="FlightImpact Logo" />
+      <h1>Coming Soon<span>...</span></h1>
+      <p>
+        Elevate your golf game with <strong><i>FlightImpact</i></strong
+        >.
+      </p>
+    </div>
+  </body>
+</html>
