@@ -1,0 +1,41 @@
+camera:
+  device: /dev/video0
+  width: 1920
+  height: 1080
+  fps: 120
+  pixel_format: MJPG
+  buffer_seconds: 2.0
+
+radar:
+  serial_port: /dev/ttyACM0
+  baud_rate: 115200
+  sample_rate_hz: 20000
+  fft_size: 1024
+  use_pi_adc: true
+  audio_device: default
+
+trigger:
+  source: radar
+  radar_speed_threshold_mph: 30.0
+  pre_trigger_ms: 200
+  post_trigger_ms: 1500
+
+network:
+  ap_mode: true
+  ap_ssid_prefix: FlightImpact
+  ap_passphrase: flightimpact
+  mdns_hostname: flightimpact
+
+storage:
+  db_path: /var/lib/flightimpact/shots.sqlite
+  clip_dir: /var/lib/flightimpact/clips
+  radar_dir: /var/lib/flightimpact/radar
+  keep_clips_days: 30
+
+api:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins:
+    - "*"
+
+dev_mode: true

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #0a0e14;
+  color: #e6edf3;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Numeric metrics use tabular figures */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ensure WebKit doesn't add bounce on the bottom navbar */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Safe-area helpers for notched devices */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }

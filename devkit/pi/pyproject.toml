@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flightimpact-devkit"
+version = "0.1.0"
+description = "FlightImpact dev kit — Pi 5 services + Uno firmware glue"
+readme = "../../README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "FlightImpact" }]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "websockets>=12",
+    "pydantic>=2.5",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "pyserial>=3.5",
+    "psutil>=5.9",
+    "aiosqlite>=0.19",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.23", "httpx>=0.26", "ruff>=0.3"]
+
+[project.scripts]
+flightimpact-api = "flightimpact_devkit.api.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["flightimpact_devkit*"]
+namespaces = true

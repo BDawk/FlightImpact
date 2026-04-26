@@ -1,0 +1,26 @@
+[Unit]
+Description=FlightImpact dev kit API service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=flightimpact
+Group=flightimpact
+WorkingDirectory=/opt/flightimpact
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/flightimpact/venv/bin/python -m flightimpact_devkit.services.api
+Restart=on-failure
+RestartSec=3
+# Allow access to camera and audio devices
+SupplementaryGroups=video audio dialout
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/flightimpact /var/log/flightimpact
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
