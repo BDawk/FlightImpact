@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "flightimpact-devkit"
 version = "0.1.0"
 description = "FlightImpact dev kit — Pi 5 services + Uno firmware glue"
-readme = "../../README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 authors = [{ name = "FlightImpact" }]
