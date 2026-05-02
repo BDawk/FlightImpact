@@ -14,6 +14,8 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 from flightimpact_devkit.config import Config, load_config
 from flightimpact_devkit.hal import CameraSource, RadarSource
@@ -111,5 +113,16 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     register_routes(app)
     register_websocket(app)
+
+    # Serve the built web app at / so REST + WebSocket + UI share an origin.
+    # Override the location with FLIGHTIMPACT_WEBAPP_DIR if you build elsewhere.
+    webapp_dir = Path(
+        os.environ.get("FLIGHTIMPACT_WEBAPP_DIR", "/opt/flightimpact/app/dist")
+    )
+    if webapp_dir.is_dir() and (webapp_dir / "index.html").exists():
+        app.mount("/", StaticFiles(directory=str(webapp_dir), html=True), name="webapp")
+        logger.info("Serving web app from %s", webapp_dir)
+    else:
+        logger.info("Web app dist not found at %s — API only", webapp_dir)
 
     return app
