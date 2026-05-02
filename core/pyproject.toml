@@ -19,10 +19,26 @@ dependencies = [
 cv = ["opencv-python-headless>=4.9", "scipy>=1.11"]
 dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff>=0.3", "mypy>=1.8"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["core*"]
-namespaces = true
+# The package's __init__.py lives at the same level as this pyproject.toml,
+# i.e. the cwd IS the `core` package itself. find_packages(where=".") would
+# look for sub-folders called core* inside core/ and find none, so we declare
+# packages explicitly and alias the package name "core" to "." via package-dir.
+[tool.setuptools]
+packages = [
+    "core",
+    "core.algorithms",
+    "core.algorithms.ball_detection",
+    "core.algorithms.ball_tracking",
+    "core.algorithms.ballistics",
+    "core.algorithms.club_detection",
+    "core.algorithms.fusion",
+    "core.algorithms.radar_dsp",
+    "core.algorithms.spin",
+    "core.api_contract",
+    "core.calibration",
+    "core.models",
+]
+package-dir = { "core" = "." }
 
 [tool.ruff]
 line-length = 100
