@@ -5,7 +5,10 @@ from core.models.calibration import CameraCalibration, RadarCalibration
 from core.models.telemetry import (
     DeviceStatus,
     LiveFrame,
+    LogMessage,
     RadarSpectrum,
+    ShotTriggered,
+    ShotUpdated,
     TelemetryMessage,
     TelemetryType,
 )
@@ -18,7 +21,10 @@ __all__ = [
     "RadarCalibration",
     "DeviceStatus",
     "LiveFrame",
+    "LogMessage",
     "RadarSpectrum",
+    "ShotTriggered",
+    "ShotUpdated",
     "TelemetryMessage",
     "TelemetryType",
 ]
