@@ -20,6 +20,7 @@ dependencies = [
     "psutil>=5.9",
     "aiosqlite>=0.19",
     "pyyaml>=6.0",
+    "sounddevice>=0.4",
 ]
 
 [project.optional-dependencies]
