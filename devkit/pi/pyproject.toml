@@ -7,7 +7,8 @@ name = "flightimpact-devkit"
 version = "0.1.0"
 description = "FlightImpact dev kit — Pi 5 services + Uno firmware glue"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
+license = "LicenseRef-Proprietary"
+license-files = ["../../LICENSE"]
 authors = [{ name = "FlightImpact" }]
 dependencies = [
     "fastapi>=0.110",
@@ -21,6 +22,12 @@ dependencies = [
     "aiosqlite>=0.19",
     "pyyaml>=6.0",
     "sounddevice>=0.4",
+    # Screen — Pillow is cross-platform, the SPI/GPIO ones are Linux-only
+    # (fine since this package only targets the Pi anyway).
+    "Pillow>=10.0",
+    "spidev>=3.6; sys_platform == 'linux'",
+    "gpiozero>=2.0; sys_platform == 'linux'",
+    "lgpio>=0.2; sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]
