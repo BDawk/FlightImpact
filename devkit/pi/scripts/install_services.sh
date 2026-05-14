@@ -15,7 +15,7 @@ USER_NAME="flightimpact"
 # Create service user if missing
 if ! id "$USER_NAME" &>/dev/null; then
   useradd --system --no-create-home --shell /usr/sbin/nologin \
-    --groups video,audio,dialout "$USER_NAME"
+    --groups video,audio,dialout,gpio,spi "$USER_NAME"
 fi
 
 # Data + log directories

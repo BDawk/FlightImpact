@@ -12,8 +12,8 @@ Environment="PYTHONUNBUFFERED=1"
 ExecStart=/opt/flightimpact/venv/bin/python -m flightimpact_devkit.services.api
 Restart=on-failure
 RestartSec=3
-# Allow access to camera and audio devices
-SupplementaryGroups=video audio dialout
+# Allow access to camera, SPI, and GPIO devices
+SupplementaryGroups=video audio dialout gpio spi
 
 # Hardening
 NoNewPrivileges=true
