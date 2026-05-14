@@ -1,31 +1,101 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/jetbrains-mono";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
+  --bg: #070b11;
+  --line: #1f2a38;
+  --line-soft: #161e2a;
+  --brand: #34d399;
 }
 
 html, body, #root {
   height: 100%;
   margin: 0;
-  background: #0a0e14;
-  color: #e6edf3;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: #e8eef5;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01", "cv02";   /* Inter humanist alts */
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Numeric metrics use tabular figures */
-.tabular {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Ensure WebKit doesn't add bounce on the bottom navbar */
 body {
   overscroll-behavior-y: contain;
 }
 
-/* Safe-area helpers for notched devices */
+/* Tabular figures — used for ALL numeric data so columns line up */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Instrument-panel small caps label */
+.cap {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5d6a78;
+  font-weight: 500;
+}
+
+/* Mono "LCD" digit treatment — for ball speed, FPS, etc. */
+.lcd {
+  font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "ss01", "ss02"; /* JBM alt 0/g */
+  font-weight: 500;
+}
+
+/* Page-level safe-area helpers */
 .pt-safe { padding-top: env(safe-area-inset-top); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Faint dot grid background — adds the "panel" feel without being noisy */
+.bg-grid {
+  background-image:
+    radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Hairline divider between panel rows */
+.divide-y-hair > * + * { border-top: 1px solid var(--line-soft); }
+
+/* Status dot helper */
+.dot {
+  width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+}
+.dot-ok   { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.6); }
+.dot-warn { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+.dot-bad  { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.5); }
+.dot-off  { background: #5d6a78; }
+
+/* Panel — base raised surface */
+.panel {
+  background: #0f141d;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.025);
+}
+
+/* Subtle scanline effect for "live" displays — opt-in */
+.scanlines {
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgba(255,255,255,0.012) 2px,
+      rgba(255,255,255,0.012) 3px
+    );
+}
+
+/* Reduce motion accommodation */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

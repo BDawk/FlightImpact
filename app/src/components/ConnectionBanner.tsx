@@ -7,8 +7,9 @@ export function ConnectionBanner() {
   }
   if (!connected) {
     return (
-      <div className="bg-signal-bad/15 border-b border-signal-bad/30 px-4 py-2 text-center text-xs text-signal-bad">
-        Disconnected from device — reconnecting…
+      <div className="border-b border-signal-bad/30 bg-signal-bad/10 px-4 py-1.5 text-center text-xs text-signal-bad">
+        <span className="cap !text-signal-bad">link down</span>
+        &nbsp;reconnecting to flightimpact.local…
       </div>
     );
   }
@@ -16,8 +17,9 @@ export function ConnectionBanner() {
   if (!status?.camera_connected) issues.push("camera");
   if (!status?.radar_connected) issues.push("radar");
   return (
-    <div className="bg-signal-warn/15 border-b border-signal-warn/30 px-4 py-2 text-center text-xs text-signal-warn">
-      Hardware issue: {issues.join(", ")} not connected
+    <div className="border-b border-signal-warn/30 bg-signal-warn/10 px-4 py-1.5 text-center text-xs text-signal-warn">
+      <span className="cap !text-signal-warn">degraded</span>
+      &nbsp;{issues.join(" + ")} not connected
     </div>
   );
 }

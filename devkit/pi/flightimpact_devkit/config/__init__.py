@@ -68,6 +68,34 @@ class APIConfig:
 
 
 @dataclass
+class ScreenConfig:
+    """On-device ST7789 LCD (1.69" 240x280)."""
+
+    enabled: bool = True
+    width: int = 240
+    height: int = 280
+    # Visible-area offsets into the 240x320 ST7789V3 driver framebuffer.
+    # Don't change these unless you're using a different panel size.
+    col_offset: int = 0
+    row_offset: int = 20
+    # SPI bus / device. /dev/spidev{bus}.{device}.
+    spi_bus: int = 0
+    spi_device: int = 0
+    spi_hz: int = 40_000_000  # drop to 24_000_000 if you see tearing
+    # GPIO pins (BCM numbering).
+    dc_pin: int = 25
+    rst_pin: int = 27
+    bl_pin: int = 18  # hardware PWM channel
+    # Render budget. The renderer will skip frames if it can't keep up.
+    target_fps: int = 30
+    # Initial backlight, 0.0–1.0. The brightness screen overrides at runtime.
+    backlight: float = 0.85
+    # If set, MockDisplay writes each frame as PNG here — useful for designing
+    # screens without hardware. Overrides via env: FLIGHTIMPACT_SCREEN_SNAPSHOT_DIR.
+    snapshot_dir: str = ""
+
+
+@dataclass
 class Config:
     camera: CameraConfig = field(default_factory=CameraConfig)
     radar: RadarConfig = field(default_factory=RadarConfig)
@@ -75,6 +103,7 @@ class Config:
     network: NetworkConfig = field(default_factory=NetworkConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     api: APIConfig = field(default_factory=APIConfig)
+    screen: ScreenConfig = field(default_factory=ScreenConfig)
     dev_mode: bool = True  # enables /api/v1/test/* and verbose logging
 
 

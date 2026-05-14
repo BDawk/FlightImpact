@@ -46,3 +46,19 @@ class TriggerSink(Protocol):
     """Optional hardware trigger output (for camera shutter / LED strobe)."""
 
     async def fire(self, duration_us: int = 100) -> None: ...
+
+
+class DisplaySink(Protocol):
+    """A frame sink for the on-device screen. Sync `show` is called from
+    a single producer task; we don't queue here — the screen service is
+    responsible for rate limiting and dropping stale frames."""
+
+    async def open(self) -> None: ...
+    async def close(self) -> None: ...
+    async def show(self, frame: "PIL.Image.Image") -> None: ...  # noqa: F821
+    async def set_backlight(self, level: float) -> None: ...
+
+    @property
+    def width(self) -> int: ...
+    @property
+    def height(self) -> int: ...

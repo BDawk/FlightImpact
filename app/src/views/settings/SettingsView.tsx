@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
 import { useTelemetry } from "@/lib/store";
+import { Panel } from "@/components/Panel";
+import { Button } from "@/components/Button";
 
 function fmtUptime(s: number): string {
   const h = Math.floor(s / 3600);
@@ -13,47 +16,89 @@ export function SettingsView() {
   const status = useTelemetry((s) => s.status);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-4">
-      <section>
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-dim">Device</h2>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-line bg-bg-elev p-4 text-sm">
-          <Row k="Camera" v={status?.camera_connected ? `${status.camera_fps?.toFixed(0) ?? "—"} fps` : "Off"} />
-          <Row k="Radar" v={status?.radar_connected ? "Connected" : "Off"} />
-          <Row k="Uno" v={status?.uno_connected ? "Connected" : "Off"} />
-          <Row k="CPU" v={`${status?.cpu_percent?.toFixed(0) ?? "—"}%`} />
-          <Row k="Memory" v={`${status?.memory_percent?.toFixed(0) ?? "—"}%`} />
-          <Row
-            k="Temp"
-            v={status?.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : "—"}
-          />
-          <Row k="Uptime" v={status ? fmtUptime(status.uptime_s) : "—"} />
-        </dl>
-      </section>
+    <div className="bg-grid">
+      <div className="mx-auto max-w-3xl space-y-3 p-3 lg:p-4">
+        <Panel title="device" subtitle="raspberry pi 5">
+          <KVList rows={[
+            ["camera", status?.camera_connected ? `${status.camera_fps?.toFixed(0) ?? "—"} fps` : "off", status?.camera_connected ? "ok" : "off"],
+            ["radar",  status?.radar_connected ? "connected" : "off", status?.radar_connected ? "ok" : "off"],
+            ["uno",    status?.uno_connected ? "connected" : "off", status?.uno_connected ? "ok" : "off"],
+            ["cpu",    `${status?.cpu_percent?.toFixed(0) ?? "—"}%`, (status?.cpu_percent ?? 0) > 85 ? "warn" : "ok"],
+            ["memory", `${status?.memory_percent?.toFixed(0) ?? "—"}%`, (status?.memory_percent ?? 0) > 85 ? "warn" : "ok"],
+            ["temp",   status?.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : "—", (status?.temperature_c ?? 0) > 75 ? "warn" : "ok"],
+            ["uptime", status ? fmtUptime(status.uptime_s) : "—", "ok"],
+          ]} />
+        </Panel>
 
-      <section>
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-dim">Network</h2>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-line bg-bg-elev p-4 text-sm">
-          <Row k="Mode" v={status?.ap_mode ? "Hotspot" : "Wi-Fi client"} />
-          <Row k="SSID" v={status?.wifi_ssid ?? "—"} />
-          <Row k="IP" v={status?.ip_address ?? "—"} />
-        </dl>
-      </section>
+        <Panel title="network">
+          <KVList rows={[
+            ["mode",  status?.ap_mode ? "access point" : "wi-fi client", "ok"],
+            ["ssid",  status?.wifi_ssid ?? "—", "ok"],
+            ["ip",    status?.ip_address ?? "—", "ok"],
+          ]} />
+        </Panel>
 
-      <section>
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-dim">About</h2>
-        <div className="rounded-xl border border-line bg-bg-elev p-4 text-sm text-ink-muted">
-          FlightImpact dev kit • v0.1.0
-        </div>
-      </section>
+        <Panel
+          title="calibration"
+          actions={
+            <>
+              <Button variant="secondary" size="sm">camera…</Button>
+              <Button variant="secondary" size="sm">radar zero</Button>
+            </>
+          }
+        >
+          <p className="text-sm text-ink-muted">
+            Run camera intrinsics with a checkerboard target before first capture.
+            Radar zero learns the cosine angle between the radar boresight and the ball path.
+          </p>
+        </Panel>
+
+        <Panel title="diagnostics">
+          <KVList rows={[
+            ["api",        ":8000", "ok"],
+            ["ws",         "/ws · live + spectrum", "ok"],
+            ["log level",  "info", "ok"],
+            ["storage",    "/var/lib/flightimpact", "ok"],
+          ]} />
+        </Panel>
+
+        <Panel title="danger zone" className="border-signal-bad/30">
+          <div className="space-y-3">
+            <Row k="restart api" v={<Button variant="danger" size="sm">systemctl restart</Button>} />
+            <Row k="clear shot db" v={<Button variant="danger" size="sm">erase all</Button>} />
+            <Row k="reboot pi" v={<Button variant="danger" size="sm">reboot</Button>} />
+          </div>
+        </Panel>
+
+        <div className="cap text-center !text-ink-faint">FlightImpact dev kit · v0.1.0</div>
+      </div>
     </div>
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+type DotKind = "ok" | "warn" | "bad" | "off";
+
+function KVList({ rows }: { rows: [string, string, DotKind][] }) {
   return (
-    <>
-      <dt className="text-ink-dim">{k}</dt>
-      <dd className="text-right text-ink tabular">{v}</dd>
-    </>
+    <dl className="divide-y-hair">
+      {rows.map(([k, v, kind]) => (
+        <div key={k} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+          <dt className="cap">{k}</dt>
+          <dd className="flex items-center gap-2">
+            <span className={`dot dot-${kind}`} />
+            <span className="lcd text-ink text-sm">{v}</span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Row({ k, v }: { k: string; v: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="cap">{k}</span>
+      <div>{v}</div>
+    </div>
   );
 }
