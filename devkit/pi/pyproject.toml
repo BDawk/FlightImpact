@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "FlightImpact dev kit — Pi 5 services + Uno firmware glue"
 requires-python = ">=3.11"
 license = "LicenseRef-Proprietary"
-license-files = ["../../LICENSE"]
 authors = [{ name = "FlightImpact" }]
 dependencies = [
     "fastapi>=0.110",
