@@ -27,6 +27,7 @@ dependencies = [
     "spidev>=3.6; sys_platform == 'linux'",
     "gpiozero>=2.0; sys_platform == 'linux'",
     "lgpio>=0.2; sys_platform == 'linux'",
+    "swig>4.4.1"
 ]
 
 [project.optional-dependencies]
