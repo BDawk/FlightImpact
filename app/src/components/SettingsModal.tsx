@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { useTelemetry } from "@/lib/store";
 import { Panel } from "./Panel";
 import { Button } from "./Button";
 import type { ReactNode } from "react";

@@ -4,7 +4,7 @@ import { useTelemetry } from "@/lib/store";
 import { SettingsModal } from "./SettingsModal";
 
 export function Header() {
-  const { connected, status } = useTelemetry();
+  const { connected } = useTelemetry();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
