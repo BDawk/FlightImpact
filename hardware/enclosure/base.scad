@@ -1,83 +1,57 @@
-// FlightImpact — main BASE chassis ("tool battery" silhouette).
+// FlightImpact - base chassis (horizontal rounded rectangle).
 //
-// Coordinate system (right-handed, +Z up):
-//   X = long axis (BASE_W)  -- "left/right"
-//   Y = short axis (BASE_D) -- "front/back"; +Y is the FRONT panel
-//   Z = vertical             -- Z=0 is the BOTTOM face of the chassis
+// Coordinate system:
+//   X = long axis (left/right)
+//   Y = depth axis (front/back), +Y is front panel
+//   Z = vertical, Z=0 at print bed
 //
-// Construction strategy: hull() two rounded cap profiles. Bottom cap is the
-// full BASE_W × BASE_D rectangle; top cap is tapered inward — strongly on the
-// short axis (BASE_TAPER), mildly on the long axis (BASE_TAPER * LONG_TAPER_F).
-// This gives the recognizable cordless-tool-battery silhouette while keeping
-// most of the top dock surface usable.
+// Internal layout is side-by-side:
+//   left bay  = LiPo battery
+//   right bay = Raspberry Pi 5 on M2.5 insert standoffs
 //
-// One long side is removable as a snap-fit lid (panel_lid.scad) so you can
-// swap the Pi or battery without unscrewing anything.
+// One side face is opened as a removable lid window for service access.
 
 include <params.scad>;
 use <dock.scad>;
 
-LONG_TAPER_F = 0.3;            // long-axis taper as fraction of short-axis taper
-
-// ---------- 2D rounded rectangle (corner radius BASE_R) ----------
+// ---------- 2D rounded rectangle ----------
 module _rrect(w, d, r = BASE_R) {
     offset(r = r) offset(r = -r)
         square([w, d], center = true);
 }
 
-// ---------- Outer hull: rounded frustum ----------
-module _hull_outer() {
-    hull() {
-        // bottom cap
-        linear_extrude(height = 0.01)
-            _rrect(BASE_W, BASE_D);
-        // top cap, tapered
-        translate([0, 0, BASE_H - 0.01])
-            linear_extrude(height = 0.01)
-                _rrect(BASE_W - 2 * BASE_TAPER * LONG_TAPER_F,
-                       BASE_D - 2 * BASE_TAPER);
-    }
+module _outer_shell() {
+    linear_extrude(height = BASE_H)
+        _rrect(BASE_W, BASE_D, BASE_R);
 }
 
-// ---------- Inner hollow: same shape, walls + floor offset inward ----------
-module _hull_inner() {
-    // start FLOOR_T above the bottom, run to top of base (top is open — dock
-    // closes it). Walls offset inward by WALL_T from the outer profile.
-    hull() {
-        translate([0, 0, FLOOR_T])
-            linear_extrude(height = 0.01)
-                offset(delta = -WALL_T)
-                    _rrect(BASE_W, BASE_D);
-        translate([0, 0, BASE_H + 0.01])
-            linear_extrude(height = 0.01)
-                offset(delta = -WALL_T)
-                    _rrect(BASE_W - 2 * BASE_TAPER * LONG_TAPER_F,
-                           BASE_D - 2 * BASE_TAPER);
-    }
+module _inner_cavity() {
+    translate([0, 0, FLOOR_T])
+        linear_extrude(height = BASE_H - FLOOR_T + 0.1)
+            offset(delta = -WALL_T)
+                _rrect(BASE_W, BASE_D, BASE_R);
 }
 
 // ---------- Front-panel cutouts ----------
-// Front face is at Y = +BASE_D/2 (slightly less at the top due to taper).
-// Cuts go in -Y direction, deep enough to clear the (tapered) wall.
-CUT_DEPTH = WALL_T + BASE_TAPER + 1.0;  // deep enough at any Z to fully pierce
+CUT_DEPTH = WALL_T + 2.0;
 
 module _front_panel_cutouts() {
     front_y = BASE_D / 2 + 0.1;
-    // LED hole
+
     translate([FRONT_LED_X, front_y, FRONT_LED_Z])
         rotate([90, 0, 0])
             cylinder(d = LED_BEZEL_OD + 2 * CL_TIGHT, h = CUT_DEPTH);
-    // Button hole
+
     translate([FRONT_BTN_X, front_y, FRONT_BTN_Z])
         rotate([90, 0, 0])
             cylinder(d = BTN_HOLE_OD + 2 * CL_TIGHT, h = CUT_DEPTH);
-    // USB-C charge in (~9.0 × 3.5mm jack body, slop added)
+
     translate([FRONT_USBC_X, front_y - CUT_DEPTH/2 + 0.1, FRONT_USBC_Z])
         cube([9.5, CUT_DEPTH, 3.8], center = true);
-    // USB-A discharge out
+
     translate([FRONT_USBA_X, front_y - CUT_DEPTH/2 + 0.1, FRONT_USBA_Z])
         cube([13.8, CUT_DEPTH, 6.7], center = true);
-    // Front ventilation grille (low intake) — bottom row
+
     for (i = [0:VENT_SLOTS_N - 1]) {
         x = -((VENT_SLOTS_N - 1) * VENT_SLOT_PITCH) / 2 + i * VENT_SLOT_PITCH;
         translate([x, front_y - CUT_DEPTH/2 + 0.1, VENT_BASE_Z + VENT_SLOT_LEN/2])
@@ -85,33 +59,74 @@ module _front_panel_cutouts() {
     }
 }
 
-// ---------- Rear-panel cutouts ----------
 module _rear_panel_cutouts() {
     rear_y = -BASE_D / 2 - 0.1;
-    // Pi 5 connector cluster window (HDMI x2, Ethernet, 3.5mm)
-    pi_floor_z = FLOOR_T + BAT_H + 2 + PI_STANDOFF_H + 1;
-    translate([0, rear_y + CUT_DEPTH/2 - 0.1, pi_floor_z + 9])
+    // Pi 5 rear I/O window, centered on the Pi bay.
+    translate([PI_CENTER_X, rear_y + CUT_DEPTH/2 - 0.1, FLOOR_T + 11])
         cube([44, CUT_DEPTH, 18], center = true);
-    // Rear ventilation grille (high exhaust)
+
     for (i = [0:VENT_SLOTS_N - 1]) {
         x = -((VENT_SLOTS_N - 1) * VENT_SLOT_PITCH) / 2 + i * VENT_SLOT_PITCH;
-        translate([x, rear_y + CUT_DEPTH/2 - 0.1, BASE_H - 8 - VENT_SLOT_LEN/2])
+        translate([x + PI_CENTER_X, rear_y + CUT_DEPTH/2 - 0.1, BASE_H - 10 - VENT_SLOT_LEN/2])
             cube([VENT_SLOT_W, CUT_DEPTH, VENT_SLOT_LEN], center = true);
     }
 }
 
-// ---------- Removable side-lid window ----------
-// Cut through the +Y... wait, no, +Y is the front. Cut through the -X side
-// (left long side). Use a slim border around the lid opening.
-module _side_lid_window() {
-    lid_inset = 6;
-    lid_w = BASE_D - 2 * lid_inset;
-    lid_h = BASE_H - 2 * lid_inset - FLOOR_T;
-    translate([-BASE_W/2 - 0.1, 0, FLOOR_T + lid_inset + lid_h/2])
-        cube([CUT_DEPTH, lid_w, lid_h], center = true);
+module _top_screen_cutouts() {
+    top_z = BASE_H + 0.1;
+    // Visible window through top surface.
+    translate([SCREEN_CENTER_X, SCREEN_CENTER_Y, top_z])
+        cylinder(h = WALL_T + 0.6, d = 0.1); // anchor for transform preview stability
+    translate([SCREEN_CENTER_X, SCREEN_CENTER_Y, BASE_H - WALL_T - 0.2])
+        cube([SCREEN_WINDOW_W, SCREEN_WINDOW_H, WALL_T + 1.0], center = true);
+
+    // Pocket for the display PCB/module body from the inside top.
+    translate([SCREEN_CENTER_X, SCREEN_CENTER_Y, BASE_H - SCREEN_POCKET_DEPTH])
+        cube([
+            SCREEN_MODULE_W + SCREEN_POCKET_CLR,
+            SCREEN_MODULE_H + SCREEN_POCKET_CLR,
+            SCREEN_MODULE_T + 0.2
+        ], center = true);
 }
 
-// ---------- Foot recesses (bottom) ----------
+module _right_side_interface_cutouts() {
+    side_x = BASE_W / 2 + 0.1;
+
+    // External PiSugar button access holes (two function buttons).
+    for (zv = [PISUGAR_BTN_Z1, PISUGAR_BTN_Z2])
+        translate([side_x, PI_CENTER_Y + PISUGAR_BTN_Y, zv])
+            rotate([0, 90, 0])
+                cylinder(d = PISUGAR_BTN_HOLE_D, h = WALL_T + 2.0);
+
+    // External charging USB-C window (front-right wall).
+    front_y = BASE_D / 2 + 0.1;
+    translate([CHARGE_PORT_X, front_y - CUT_DEPTH/2 + 0.1, CHARGE_PORT_Z])
+        cube([CHARGE_PORT_W, CUT_DEPTH, CHARGE_PORT_H], center = true);
+}
+
+module _side_lid_window() {
+    lid_w = BASE_D - 2 * LID_BORDER;
+    lid_h = BASE_H - FLOOR_T - 2 * LID_BORDER;
+    translate([-BASE_W/2 - 0.1, 0, FLOOR_T + LID_BORDER + lid_h/2])
+        cube([WALL_T + 1.2, lid_w, lid_h], center = true);
+}
+
+module _side_lid_bosses() {
+    y_span = BASE_D / 2 - LID_SCREW_EDGE_Y;
+    z0 = FLOOR_T + LID_SCREW_EDGE_Z;
+    z1 = BASE_H - LID_SCREW_EDGE_Z;
+    x0 = -BASE_W / 2 + WALL_T + 0.6;
+
+    for (yy = [-y_span, y_span], zz = [z0, z1])
+        translate([x0, yy, zz])
+            rotate([0, 90, 0])
+                difference() {
+                    cylinder(d = LID_BOSS_OD, h = LID_BOSS_LEN);
+                    translate([0, 0, -0.05])
+                        cylinder(d = LID_SCREW_PILOT_D, h = LID_BOSS_LEN + 0.1);
+                }
+}
+
 module _feet_recesses() {
     foot_d = 12.5;
     foot_h = 1.2;
@@ -121,47 +136,115 @@ module _feet_recesses() {
             cylinder(d = foot_d, h = foot_h);
 }
 
-// ---------- Dock placement on top of base ----------
-// Top surface = Z=BASE_H. dock_male() builds rails along its local Y; we want
-// rails along world X (the long axis), so rotate 90° about Z.
-module _dock_on_top() {
-    translate([0, 0, BASE_H])
-        rotate([0, 0, 90])
-            dock_male();
+module _battery_retainers() {
+    rx = BAT_W / 2 + BAT_BAY_CL;
+    ry = BAT_D / 2 + BAT_BAY_CL;
+    h = 4.0;
+    w = 3.0;
+
+    for (sx = [-1, 1], sy = [-1, 1])
+        translate([
+            BAT_CENTER_X + sx * (rx - w/2),
+            BAT_CENTER_Y + sy * (ry - w/2),
+            FLOOR_T,
+        ])
+            cube([w, w, h], center = true);
 }
 
-// ---------- Top closure plate (between hull top and dock) ----------
-// Above _hull_inner the cavity is open. Add a thin closure plate with a hole
-// for cable pass-through, so the chassis is enclosed and the dock has a real
-// surface to ride on.
-module _top_closure() {
-    plate_t = 2.0;
-    translate([0, 0, BASE_H - plate_t]) difference() {
-        linear_extrude(height = plate_t)
-            offset(delta = -WALL_T)
-                _rrect(BASE_W - 2 * BASE_TAPER * LONG_TAPER_F,
-                       BASE_D - 2 * BASE_TAPER);
-        // cable pass-through (matches dock)
-        translate([0, -DOCK_CABLE_OD, -0.1])
-            cylinder(d = DOCK_CABLE_OD, h = plate_t + 0.2);
+module _screen_clamps() {
+    // Printed clamp tabs that lightly retain the screen PCB from inside.
+    y0 = SCREEN_CENTER_Y + (SCREEN_MODULE_H + SCREEN_POCKET_CLR)/2 - SCREEN_CLAMP_W/2;
+    y1 = SCREEN_CENTER_Y - (SCREEN_MODULE_H + SCREEN_POCKET_CLR)/2 + SCREEN_CLAMP_W/2;
+    x0 = SCREEN_CENTER_X + (SCREEN_MODULE_W + SCREEN_POCKET_CLR)/2 - SCREEN_CLAMP_W/2;
+    x1 = SCREEN_CENTER_X - (SCREEN_MODULE_W + SCREEN_POCKET_CLR)/2 + SCREEN_CLAMP_W/2;
+    zc = BASE_H - SCREEN_POCKET_DEPTH - SCREEN_CLAMP_DROP/2;
+
+    for (xx = [x0, x1], yy = [y0, y1])
+        translate([xx, yy, zc])
+            cube([SCREEN_CLAMP_W, SCREEN_CLAMP_W, SCREEN_CLAMP_DROP], center = true);
+}
+
+module _pi_insert_boss() {
+    difference() {
+        cylinder(d = PI_BOSS_OD, h = PI_STANDOFF_H);
+        // Heat-set insert cavity from top face.
+        translate([0, 0, PI_STANDOFF_H - PI_INSERT_DEPTH])
+            cylinder(d = PI_INSERT_OD, h = PI_INSERT_DEPTH + 0.05);
+        // Keep a narrow pilot below insert to avoid elephant-foot bulge.
+        translate([0, 0, -0.05])
+            cylinder(d = 2.2, h = PI_STANDOFF_H - PI_INSERT_DEPTH + PI_INSERT_BOTTOM_WEB);
     }
+}
+
+module _pi_mounts() {
+    z0 = FLOOR_T;
+    for (sx = [-1, 1], sy = [-1, 1]) {
+        x = PI_CENTER_X + sx * PI_HOLE_DX / 2;
+        y = PI_CENTER_Y + sy * PI_HOLE_DY / 2;
+        // Pedestal from floor to board plane.
+        translate([x, y, z0])
+            cylinder(d = PI_BOSS_OD + 1.2, h = 1.2);
+        // Insert boss at board plane.
+        translate([x, y, z0 + 1.2])
+            _pi_insert_boss();
+    }
+}
+
+module _usb_posts() {
+    post_h = 6.0;
+    post_od = 6.0;
+    usb_center_x = (BAT_CENTER_X + PI_CENTER_X) / 2;
+    usb_center_y = BASE_D/2 - WALL_T - USB_D/2 - 7;
+
+    for (sx = [-1, 1], sy = [-1, 1]) {
+        x = usb_center_x + sx * USB_HOLE_DX / 2;
+        y = usb_center_y + sy * USB_HOLE_DY / 2;
+        translate([x, y, FLOOR_T])
+            difference() {
+                cylinder(d = post_od, h = post_h);
+                translate([0, 0, -0.05]) cylinder(d = M25_CLEAR, h = post_h + 0.1);
+            }
+    }
+}
+
+module _pisugar_button_guides() {
+    side_x = BASE_W/2 - WALL_T - 2.0;
+    for (zv = [PISUGAR_BTN_Z1, PISUGAR_BTN_Z2])
+        translate([side_x, PI_CENTER_Y + PISUGAR_BTN_Y, zv])
+            rotate([0, 90, 0])
+                difference() {
+                    cylinder(d = PISUGAR_BTN_GUIDE_OD, h = 6.0);
+                    translate([0, 0, -0.05])
+                        cylinder(d = PISUGAR_BTN_GUIDE_ID, h = 6.1);
+                }
 }
 
 // ============================================================================
 //  Main base
 // ============================================================================
 module base_chassis() {
-    difference() {
-        union() {
-            _hull_outer();
-            _top_closure();
-            _dock_on_top();
+    union() {
+        difference() {
+            union() {
+                _outer_shell();
+                if (ENABLE_DOCK)
+                    translate([0, 0, BASE_H]) rotate([0, 0, 90]) dock_male();
+            }
+            _inner_cavity();
+            _front_panel_cutouts();
+            _rear_panel_cutouts();
+            _top_screen_cutouts();
+            _right_side_interface_cutouts();
+            _side_lid_window();
+            _feet_recesses();
         }
-        _hull_inner();
-        _front_panel_cutouts();
-        _rear_panel_cutouts();
-        _side_lid_window();
-        _feet_recesses();
+
+        _battery_retainers();
+        _pi_mounts();
+        _usb_posts();
+        _screen_clamps();
+        _pisugar_button_guides();
+        _side_lid_bosses();
     }
 }
 
