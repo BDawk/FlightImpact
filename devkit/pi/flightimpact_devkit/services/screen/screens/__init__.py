@@ -17,7 +17,16 @@ from typing import Callable
 from PIL import Image
 
 from flightimpact_devkit.services.screen.state import ScreenMode, ScreenState
-from flightimpact_devkit.services.screen.screens import boot, home, initializing, result
+from flightimpact_devkit.services.screen.screens import (
+    boot,
+    capture,
+    home,
+    initializing,
+    pair,
+    pre_shot,
+    result,
+    status,
+)
 
 
 Renderer = Callable[[ScreenState], Image.Image]
@@ -26,7 +35,11 @@ Renderer = Callable[[ScreenState], Image.Image]
 RENDERERS: dict[ScreenMode, Renderer] = {
     ScreenMode.BOOT: boot.render,
     ScreenMode.INITIALIZING: initializing.render,
+    ScreenMode.PAIR: pair.render,
     ScreenMode.HOME: home.render,
+    ScreenMode.STATUS: status.render,
+    ScreenMode.PRE_SHOT: pre_shot.render,
+    ScreenMode.CAPTURE: capture.render,
     ScreenMode.RESULT: result.render,
 }
 

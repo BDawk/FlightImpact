@@ -5,6 +5,7 @@ import type {
   LiveFrame,
   LogMessage,
   RadarSpectrum,
+  ScreenStateUpdated,
   Shot,
   TelemetryMessage,
 } from "@/lib/types";
@@ -14,6 +15,7 @@ interface TelemetryState {
   status: DeviceStatus | null;
   liveFrame: LiveFrame | null;
   spectrum: RadarSpectrum | null;
+  screenState: ScreenStateUpdated | null;
   recentShots: Shot[];
   logs: LogMessage[];
   start: () => void;
@@ -35,6 +37,9 @@ export const useTelemetry = create<TelemetryState>((set, get) => {
         break;
       case "radar_spectrum":
         set({ spectrum: msg });
+        break;
+      case "screen_state":
+        set({ screenState: msg });
         break;
       case "shot_updated": {
         const existing = get().recentShots;
@@ -63,6 +68,7 @@ export const useTelemetry = create<TelemetryState>((set, get) => {
     status: null,
     liveFrame: null,
     spectrum: null,
+    screenState: null,
     recentShots: [],
     logs: [],
     start() {

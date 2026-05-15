@@ -20,6 +20,7 @@ class TelemetryType(str, Enum):
     DEVICE_STATUS = "device_status"
     LIVE_FRAME = "live_frame"
     RADAR_SPECTRUM = "radar_spectrum"
+    SCREEN_STATE = "screen_state"
     SHOT_TRIGGERED = "shot_triggered"
     SHOT_UPDATED = "shot_updated"
     LOG = "log"
@@ -76,6 +77,29 @@ class RadarSpectrum(BaseModel):
     peak_speed_mph: Optional[float] = None
 
 
+class ScreenStateUpdated(BaseModel):
+    """Screen mode/state snapshot from the on-device renderer service."""
+
+    type: Literal[TelemetryType.SCREEN_STATE] = TelemetryType.SCREEN_STATE
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    mode: str
+    boot_progress: float
+    session_id: int
+    battery_pct: Optional[int] = None
+    clock_hhmm: str = ""
+
+    storage_ok: bool
+    camera_ok: bool
+    radar_ok: bool
+    api_ok: bool
+    uno_ok: bool
+
+    current_shot_id: Optional[int] = None
+    current_ball_speed_mph: Optional[float] = None
+    current_quality: Optional[str] = None
+
+
 class ShotTriggered(BaseModel):
     type: Literal[TelemetryType.SHOT_TRIGGERED] = TelemetryType.SHOT_TRIGGERED
     timestamp: datetime = Field(default_factory=datetime.utcnow)
@@ -102,6 +126,7 @@ TelemetryMessage = Union[
     DeviceStatus,
     LiveFrame,
     RadarSpectrum,
+    ScreenStateUpdated,
     ShotTriggered,
     ShotUpdated,
     LogMessage,

@@ -5,6 +5,7 @@ import { MetricTile } from "@/components/MetricTile";
 import { useTelemetry } from "@/lib/store";
 import { api } from "@/lib/transport/rest";
 import type { Shot } from "@/lib/types";
+import { ScreenDebugPanel } from "@/views/control/ScreenDebugPanel";
 
 export function ControlView() {
   const recent = useTelemetry((s) => s.recentShots);
@@ -28,6 +29,7 @@ export function ControlView() {
           {/* Controls sidebar — right on large screens, top on mobile */}
           <div className="space-y-3 order-first lg:order-last">
             <ControlsPanel />
+            <ScreenDebugPanel />
           </div>
 
           {/* Main — latest shot + history */}

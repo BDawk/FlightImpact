@@ -8,6 +8,8 @@ and what hardware is actually present (auto-fallback to mock).
 from __future__ import annotations
 
 import logging
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -118,9 +120,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     screen_service.set_boot_progress(0.8)
 
     await processor_service.start()
+    unsub_screen_shots = processor_service.subscribe_shot_updates(
+        screen_service.on_processor_shot
+    )
     screen_service.update_health(api_ok=True, api_port=config.api.port)
     screen_service.set_boot_progress(1.0)
     screen_service.set_mode(ScreenMode.HOME)
+
+    async def _screen_health_loop() -> None:
+        while True:
+            await asyncio.sleep(2.0)
+            screen_service.update_health(
+                camera_ok=camera_service.connected,
+                camera_fps=int(round(camera_service.fps)) if camera_service.fps else None,
+                radar_ok=radar_service.connected,
+                api_ok=True,
+            )
+
+    health_task = asyncio.create_task(_screen_health_loop(), name="screen-health")
 
     logger.info("All services started — API ready on %s:%d", config.api.host, config.api.port)
 
@@ -128,6 +145,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         logger.info("Shutting down services")
+        health_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await health_task
+        unsub_screen_shots()
         await screen_service.stop()
         await camera_service.stop()
         await radar_service.stop()

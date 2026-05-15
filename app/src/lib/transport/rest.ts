@@ -1,4 +1,4 @@
-import type { DeviceStatus, Shot } from "@/lib/types";
+import type { DeviceStatus, ScreenScenarioUpdate, ScreenStateSnapshot, Shot } from "@/lib/types";
 
 const BASE = "/api/v1";
 
@@ -22,4 +22,17 @@ export const api = {
     }),
   triggerTestShot: () =>
     jsonFetch<Shot>(`${BASE}/test/trigger`, { method: "POST" }),
+  getScreenState: () => jsonFetch<ScreenStateSnapshot>(`${BASE}/screen/state`),
+  setScreenMode: (mode: string) =>
+    jsonFetch<ScreenStateSnapshot>(`${BASE}/screen/mode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    }),
+  applyScreenScenario: (body: ScreenScenarioUpdate) =>
+    jsonFetch<ScreenStateSnapshot>(`${BASE}/screen/scenario`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
 };

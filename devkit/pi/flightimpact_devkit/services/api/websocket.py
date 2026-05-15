@@ -20,6 +20,7 @@ from core.models import (
     DeviceStatus,
     LiveFrame,
     RadarSpectrum,
+    ScreenStateUpdated,
     Shot,
     ShotUpdated,
 )
@@ -39,6 +40,7 @@ class WSConnection:
         self.subscribe_live_frame = False
         self.subscribe_radar_spectrum = False
         self.subscribe_logs = False
+        self.subscribe_screen_state = True
         self._send_lock = asyncio.Lock()
 
     async def send_json(self, payload: str) -> None:
@@ -75,6 +77,30 @@ def register_websocket(app: FastAPI) -> None:
         for c in list(connections):
             asyncio.create_task(_safe_send(c, payload))
 
+    def on_screen_state(_state) -> None:
+        snap = app.state.screen_service.snapshot()
+        shot = snap.get("current_shot") or {}
+        services = snap.get("services") or {}
+        msg = ScreenStateUpdated(
+            mode=snap.get("mode", "home"),
+            boot_progress=float(snap.get("boot_progress", 0.0)),
+            session_id=int(snap.get("session_id", 0)),
+            battery_pct=snap.get("battery_pct"),
+            clock_hhmm=snap.get("clock_hhmm") or "",
+            storage_ok=bool(services.get("storage_ok", False)),
+            camera_ok=bool(services.get("camera_ok", False)),
+            radar_ok=bool(services.get("radar_ok", False)),
+            api_ok=bool(services.get("api_ok", False)),
+            uno_ok=bool(services.get("uno_ok", False)),
+            current_shot_id=shot.get("shot_id"),
+            current_ball_speed_mph=shot.get("ball_speed_mph"),
+            current_quality=shot.get("quality"),
+        )
+        payload = msg.model_dump_json()
+        for c in list(connections):
+            if c.subscribe_screen_state:
+                asyncio.create_task(_safe_send(c, payload))
+
     async def _safe_send(c: WSConnection, payload: str) -> None:
         try:
             await c.send_json(payload)
@@ -91,6 +117,7 @@ def register_websocket(app: FastAPI) -> None:
         unsub_callbacks.append(app.state.camera_service.subscribe_preview(on_preview_frame))
         unsub_callbacks.append(app.state.radar_service.subscribe_spectrum(on_spectrum))
         unsub_callbacks.append(app.state.processor_service.subscribe_shot_updates(on_shot_update))
+        unsub_callbacks.append(app.state.screen_service.subscribe_state(on_screen_state))
         services_wired["done"] = True
 
     # ---- Heartbeat task pushes DeviceStatus to all clients every 2s -------------
@@ -159,5 +186,9 @@ def register_websocket(app: FastAPI) -> None:
             c.subscribe_logs = True
         elif cmd == WSCommand.UNSUBSCRIBE_LOGS:
             c.subscribe_logs = False
+        elif cmd == WSCommand.SUBSCRIBE_SCREEN_STATE:
+            c.subscribe_screen_state = True
+        elif cmd == WSCommand.UNSUBSCRIBE_SCREEN_STATE:
+            c.subscribe_screen_state = False
         else:
             logger.warning("Unknown WS command: %s", cmd)

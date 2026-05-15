@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 from typing import Optional
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from pydantic import BaseModel
 
 from core.api_contract import API_VERSION
 from core.models import DeviceStatus, Shot
+from flightimpact_devkit.services.screen.state import ScreenMode, ShotMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,13 @@ def _get_temperature_c() -> Optional[float]:
 
 def register_routes(app: FastAPI) -> None:
     router = APIRouter(prefix="/api/v1")
+
+    def _parse_mode(mode: str) -> ScreenMode:
+        try:
+            return ScreenMode(mode)
+        except ValueError as e:
+            valid = ", ".join(m.value for m in ScreenMode)
+            raise HTTPException(400, f"Invalid mode '{mode}'. Valid: {valid}") from e
 
     @router.get("/version")
     def get_version() -> dict:
@@ -87,5 +96,70 @@ def register_routes(app: FastAPI) -> None:
         if not app.state.config.dev_mode:
             raise HTTPException(403, "Manual trigger is dev-mode only")
         return await app.state.processor_service.trigger_test_shot()
+
+    class ScreenModeUpdate(BaseModel):
+        mode: str
+
+    class ScenarioShot(BaseModel):
+        shot_id: int
+        ball_speed_mph: float
+        carry_yd: int
+        launch_deg: float
+        spin_rpm: int
+        smash_factor: float
+        apex_yd: int = 0
+        hang_s: float = 0.0
+        side_yd: float = 0.0
+        quality: str = "good"
+
+    class ScreenScenarioUpdate(BaseModel):
+        mode: Optional[str] = None
+        boot_progress: Optional[float] = None
+        battery_pct: Optional[int] = None
+        session_id: Optional[int] = None
+        clock_hhmm: Optional[str] = None
+        brightness: Optional[float] = None
+        shot: Optional[ScenarioShot] = None
+
+    @router.get("/screen/state")
+    def get_screen_state() -> dict[str, Any]:
+        return app.state.screen_service.snapshot()
+
+    @router.post("/screen/mode")
+    def set_screen_mode(body: ScreenModeUpdate) -> dict[str, Any]:
+        if not app.state.config.dev_mode:
+            raise HTTPException(403, "Screen mode override is dev-mode only")
+        mode = _parse_mode(body.mode)
+        app.state.screen_service.set_mode(mode)
+        return app.state.screen_service.snapshot()
+
+    @router.post("/screen/scenario")
+    def apply_screen_scenario(body: ScreenScenarioUpdate) -> dict[str, Any]:
+        if not app.state.config.dev_mode:
+            raise HTTPException(403, "Screen scenario API is dev-mode only")
+
+        screen = app.state.screen_service
+        if body.boot_progress is not None:
+            screen.set_boot_progress(body.boot_progress)
+        if body.brightness is not None:
+            screen.set_brightness(body.brightness)
+
+        update_state_payload: dict[str, Any] = {}
+        if body.battery_pct is not None:
+            update_state_payload["battery_pct"] = body.battery_pct
+        if body.session_id is not None:
+            update_state_payload["session_id"] = body.session_id
+        if body.clock_hhmm is not None:
+            update_state_payload["clock_hhmm"] = body.clock_hhmm
+        if update_state_payload:
+            screen.update_state(**update_state_payload)
+
+        if body.shot is not None:
+            screen.on_shot(ShotMetrics(**body.shot.model_dump()))
+
+        if body.mode is not None:
+            screen.set_mode(_parse_mode(body.mode))
+
+        return screen.snapshot()
 
     app.include_router(router)

@@ -32,6 +32,19 @@ Manually fire a test shot. Returns the shot stub immediately; the final
 metrics arrive via WebSocket as the processor finishes. Dev-mode only —
 returns `403` in production builds.
 
+### `GET /api/v1/screen/state`
+Returns the current on-device screen state snapshot (mode, health flags,
+current shot summary, and UI header values).
+
+### `POST /api/v1/screen/mode`
+Body: `{mode}` where `mode` is one of `ScreenMode` values. Forces the on-device
+screen into that mode. Dev-mode only.
+
+### `POST /api/v1/screen/scenario`
+Body: partial scenario payload to update screen state in one call:
+`{mode?, boot_progress?, battery_pct?, session_id?, clock_hhmm?, brightness?, shot?}`.
+Useful for mockup validation and live scenario testing. Dev-mode only.
+
 ## WebSocket
 
 Connect to `/ws`. Messages flow in both directions.
@@ -47,6 +60,7 @@ Every message is a JSON object with a `type` discriminator. See
 | `shot_updated`  | Each transition (capturing → processing → complete) | No |
 | `live_frame`    | ~10 Hz JPEG preview | Yes |
 | `radar_spectrum` | Per FFT block (~20 Hz) | Yes |
+| `screen_state`  | On screen-state mutation (mode change, health, shot transition) | No (default-on) |
 | `log`           | Server log entries | Yes |
 
 ### Client → server
@@ -61,6 +75,8 @@ Plain text command frames, one per line:
 | `unsubscribe_radar_spectrum` | Stop |
 | `subscribe_logs` | Start receiving `log` messages |
 | `unsubscribe_logs` | Stop |
+| `subscribe_screen_state` | Start receiving `screen_state` messages |
+| `unsubscribe_screen_state` | Stop |
 
 The default-off, opt-in pattern for high-bandwidth streams matters more than
 it sounds: a phone on AP-mode Wi-Fi can saturate a 5 GHz link if you stream

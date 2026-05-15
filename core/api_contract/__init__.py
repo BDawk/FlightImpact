@@ -24,6 +24,9 @@ REST_ROUTES = {
     "GET /api/v1/calibration/radar": "Current radar calibration",
     "POST /api/v1/calibration/radar": "Update radar calibration parameters",
     "POST /api/v1/test/trigger": "Manually trigger a test shot (dev kit)",
+    "GET /api/v1/screen/state": "Current on-device screen state",
+    "POST /api/v1/screen/mode": "Force a specific screen mode (dev mode)",
+    "POST /api/v1/screen/scenario": "Apply a scenario payload to screen state (dev mode)",
     "GET /api/v1/clip/{id}": "Download raw clip for a shot (dev kit)",
 }
 
@@ -43,3 +46,5 @@ class WSCommand:
     UNSUBSCRIBE_RADAR_SPECTRUM = "unsubscribe_radar_spectrum"
     SUBSCRIBE_LOGS = "subscribe_logs"
     UNSUBSCRIBE_LOGS = "unsubscribe_logs"
+    SUBSCRIBE_SCREEN_STATE = "subscribe_screen_state"
+    UNSUBSCRIBE_SCREEN_STATE = "unsubscribe_screen_state"
