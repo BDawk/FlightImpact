@@ -9,11 +9,12 @@ type Mode = "waterfall" | "spectrum";
 export function RadarPanel() {
   const [mode, setMode] = useState<Mode>("waterfall");
   const spectrum = useTelemetry((s) => s.spectrum);
+  const status = useTelemetry((s) => s.status);
 
   return (
     <Panel
-      title="radar doppler"
-      subtitle="HB100 · 10.525 GHz"
+      title="Radar"
+      subtitle={status?.radar_connected ? "HB100 · 10.525 GHz" : "No signal"}
       actions={
         <>
           <PanelButton active={mode === "waterfall"} onClick={() => setMode("waterfall")}>
@@ -30,12 +31,12 @@ export function RadarPanel() {
 
       {/* Footer readout strip */}
       <div className="flex items-center justify-between rounded-md border border-line bg-bg-input px-2.5 py-1.5 text-xs">
-        <span className="cap">peak</span>
+        <span className="cap">Peak</span>
         <span className="lcd text-ink">
           {spectrum?.peak_freq_hz ? `${spectrum.peak_freq_hz.toFixed(0)}` : "—"}
-          <span className="ml-0.5 text-ink-dim text-[10px]">hz</span>
+          <span className="ml-0.5 text-ink-dim text-[10px]">Hz</span>
         </span>
-        <span className="cap">→ ball</span>
+        <span className="cap">→ Ball speed</span>
         <span className="lcd text-brand">
           {spectrum?.peak_speed_mph != null ? spectrum.peak_speed_mph.toFixed(1) : "—"}
           <span className="ml-0.5 text-ink-dim text-[10px]">mph</span>

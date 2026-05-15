@@ -3,6 +3,7 @@ import { telemetrySocket } from "@/lib/transport/socket";
 import type {
   DeviceStatus,
   LiveFrame,
+  LogMessage,
   RadarSpectrum,
   Shot,
   TelemetryMessage,
@@ -14,9 +15,12 @@ interface TelemetryState {
   liveFrame: LiveFrame | null;
   spectrum: RadarSpectrum | null;
   recentShots: Shot[];
+  logs: LogMessage[];
   start: () => void;
   stop: () => void;
 }
+
+const LOG_BUFFER_MAX = 500;
 
 export const useTelemetry = create<TelemetryState>((set, get) => {
   let started = false;
@@ -44,6 +48,11 @@ export const useTelemetry = create<TelemetryState>((set, get) => {
         }
         break;
       }
+      case "log": {
+        const existing = get().logs;
+        set({ logs: [...existing, msg].slice(-LOG_BUFFER_MAX) });
+        break;
+      }
       default:
         break;
     }
@@ -55,6 +64,7 @@ export const useTelemetry = create<TelemetryState>((set, get) => {
     liveFrame: null,
     spectrum: null,
     recentShots: [],
+    logs: [],
     start() {
       if (started) return;
       started = true;
