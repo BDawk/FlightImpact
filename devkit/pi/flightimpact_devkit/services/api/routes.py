@@ -120,6 +120,11 @@ def register_routes(app: FastAPI) -> None:
         clock_hhmm: Optional[str] = None
         brightness: Optional[float] = None
         shot: Optional[ScenarioShot] = None
+        # Health overrides — dev only. Let the debug panel simulate a
+        # camera/radar drop-out without unplugging the hardware.
+        camera_ok: Optional[bool] = None
+        radar_ok: Optional[bool] = None
+        uno_ok: Optional[bool] = None
 
     @router.get("/screen/state")
     def get_screen_state() -> dict[str, Any]:
@@ -153,6 +158,16 @@ def register_routes(app: FastAPI) -> None:
             update_state_payload["clock_hhmm"] = body.clock_hhmm
         if update_state_payload:
             screen.update_state(**update_state_payload)
+
+        health_payload: dict[str, Any] = {}
+        if body.camera_ok is not None:
+            health_payload["camera_ok"] = body.camera_ok
+        if body.radar_ok is not None:
+            health_payload["radar_ok"] = body.radar_ok
+        if body.uno_ok is not None:
+            health_payload["uno_ok"] = body.uno_ok
+        if health_payload:
+            screen.update_health(**health_payload)
 
         if body.shot is not None:
             screen.on_shot(ShotMetrics(**body.shot.model_dump()))

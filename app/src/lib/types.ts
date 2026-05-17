@@ -104,6 +104,11 @@ export interface ScreenScenarioUpdate {
   clock_hhmm?: string;
   brightness?: number;
   shot?: ScreenShotScenario;
+  // Dev-mode health overrides — used by the debug panel to simulate a
+  // sensor drop-out without unplugging hardware.
+  camera_ok?: boolean;
+  radar_ok?: boolean;
+  uno_ok?: boolean;
 }
 
 export interface ScreenStateSnapshot {

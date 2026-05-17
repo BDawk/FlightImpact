@@ -22,9 +22,11 @@ from flightimpact_devkit.services.screen.screens import (
     capture,
     home,
     initializing,
+    low_battery,
     pair,
     pre_shot,
     result,
+    sensor_offline,
     status,
 )
 
@@ -41,6 +43,8 @@ RENDERERS: dict[ScreenMode, Renderer] = {
     ScreenMode.PRE_SHOT: pre_shot.render,
     ScreenMode.CAPTURE: capture.render,
     ScreenMode.RESULT: result.render,
+    ScreenMode.LOW_BATTERY: low_battery.render,
+    ScreenMode.SENSOR_OFFLINE: sensor_offline.render,
 }
 
 

@@ -5,7 +5,18 @@ import { useTelemetry } from "@/lib/store";
 import { api } from "@/lib/transport/rest";
 import type { ScreenStateSnapshot } from "@/lib/types";
 
-const MODES = ["pair", "home", "status", "pre_shot", "capture", "result"] as const;
+const MODES = [
+  "boot",
+  "initializing",
+  "pair",
+  "home",
+  "status",
+  "pre_shot",
+  "capture",
+  "result",
+  "low_battery",
+  "sensor_offline",
+] as const;
 
 export function ScreenDebugPanel() {
   const live = useTelemetry((s) => s.screenState);
@@ -156,6 +167,28 @@ export function ScreenDebugPanel() {
     ]);
   };
 
+  const runLowBatteryMacro = async () => {
+    // Drop battery into the alert range, then recover above the hysteresis
+    // threshold so the screen returns to whatever it was on.
+    await runMacro("Low Battery", [
+      { waitMs: 0, payload: { mode: "home", battery_pct: battery, session_id: session } },
+      { waitMs: 600, payload: { battery_pct: 18 } },
+      { waitMs: 2200, payload: { battery_pct: 12 } },
+      { waitMs: 2200, payload: { battery_pct: 30 } },
+    ]);
+  };
+
+  const runSensorOfflineMacro = async () => {
+    // Use the dev-only health override to drop the camera, then bring it
+    // back. The screen should auto-flip to SENSOR_OFFLINE and back.
+    await runMacro("Sensor Offline", [
+      { waitMs: 0, payload: { mode: "home", camera_ok: true, radar_ok: true, battery_pct: battery } },
+      { waitMs: 800, payload: { camera_ok: false } },
+      { waitMs: 2200, payload: { radar_ok: false } },
+      { waitMs: 2200, payload: { camera_ok: true, radar_ok: true } },
+    ]);
+  };
+
   const runDemoLoopMacro = async () => {
     await runMacro(
       "Demo Loop",
@@ -266,6 +299,14 @@ export function ScreenDebugPanel() {
           <Button size="sm" disabled={busy || !!macroRunning} onClick={runBootMacro}>Boot</Button>
           <Button size="sm" disabled={busy || !!macroRunning} onClick={runPairMacro}>Pairing</Button>
           <Button size="sm" disabled={busy || !!macroRunning} onClick={runShotMacro}>Shot Flow</Button>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button size="sm" variant="danger" disabled={busy || !!macroRunning} onClick={runLowBatteryMacro}>
+            Low Battery
+          </Button>
+          <Button size="sm" variant="danger" disabled={busy || !!macroRunning} onClick={runSensorOfflineMacro}>
+            Sensor Offline
+          </Button>
         </div>
         <Button
           size="sm"

@@ -27,6 +27,14 @@ from flightimpact_devkit.services.screen.state import (
 logger = logging.getLogger(__name__)
 
 
+# --- Auto-transition thresholds ----------------------------------------
+BATTERY_LOW_THRESHOLD = 20
+BATTERY_RECOVERY_THRESHOLD = 25
+RESULT_HOLD_SECONDS = 8.0
+_AUTO_ALERT_BLOCKED_MODES = (ScreenMode.BOOT, ScreenMode.INITIALIZING)
+_ALERT_MODES = (ScreenMode.LOW_BATTERY, ScreenMode.SENSOR_OFFLINE)
+
+
 class ScreenService:
     def __init__(self, display: DisplaySink, config: ScreenConfig):
         self._display = display
@@ -34,9 +42,13 @@ class ScreenService:
         self._state = ScreenState()
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
-        self._wake = asyncio.Event()  # set when state changes — wakes the renderer
+        self._wake = asyncio.Event()
         self._subscribers: list[Callable[[ScreenState], None]] = []
         self._shot_ids: dict[str, int] = {}
+        self._alerts_armed = False
+        self._auto_alert_active = False
+        self._pre_alert_mode: ScreenMode | None = None
+        self._result_shown_at: float | None = None
 
     @property
     def state(self) -> ScreenState:
@@ -55,11 +67,9 @@ class ScreenService:
 
     def subscribe_state(self, fn: Callable[[ScreenState], None]) -> Callable[[], None]:
         self._subscribers.append(fn)
-
         def _unsub() -> None:
             if fn in self._subscribers:
                 self._subscribers.remove(fn)
-
         return _unsub
 
     def snapshot(self) -> dict:
@@ -97,8 +107,6 @@ class ScreenService:
             },
         }
 
-    # --- State mutators (called from the API or other services) ---------
-
     def _publish_state(self) -> None:
         for fn in list(self._subscribers):
             try:
@@ -111,10 +119,22 @@ class ScreenService:
         self._publish_state()
 
     def set_mode(self, mode: ScreenMode) -> None:
-        if self._state.mode != mode:
-            logger.info("Screen mode → %s", mode.value)
-            self._state.mode = mode
-            self._changed()
+        if self._state.mode == mode:
+            return
+        logger.info("Screen mode → %s", mode.value)
+        self._state.mode = mode
+        if not self._alerts_armed and mode not in _AUTO_ALERT_BLOCKED_MODES:
+            self._alerts_armed = True
+        if mode == ScreenMode.RESULT:
+            self._result_shown_at = time.monotonic()
+        else:
+            self._result_shown_at = None
+        if self._auto_alert_active and mode not in _ALERT_MODES:
+            self._auto_alert_active = False
+            self._pre_alert_mode = None
+        self._changed()
+        if mode not in _ALERT_MODES:
+            self._evaluate_alerts()
 
     def update_health(self, **kwargs) -> None:
         h = self._state.services
@@ -126,9 +146,11 @@ class ScreenService:
                     changed = True
         if changed:
             self._changed()
+            self._evaluate_alerts()
 
     def update_state(self, **kwargs) -> None:
         changed = False
+        battery_changed = False
         for k, v in kwargs.items():
             if not hasattr(self._state, k):
                 continue
@@ -137,8 +159,12 @@ class ScreenService:
             if getattr(self._state, k) != v:
                 setattr(self._state, k, v)
                 changed = True
+                if k == "battery_pct":
+                    battery_changed = True
         if changed:
             self._changed()
+        if battery_changed:
+            self._evaluate_alerts()
 
     def set_boot_progress(self, fraction: float) -> None:
         bounded = max(0.0, min(1.0, fraction))
@@ -155,7 +181,6 @@ class ScreenService:
     def on_processor_shot(self, shot: Shot) -> None:
         shot_key = str(shot.id)
         shot_id = self._shot_ids.setdefault(shot_key, len(self._shot_ids) + 1)
-
         if shot.status in {ShotStatus.CAPTURING, ShotStatus.PROCESSING}:
             self.set_mode(ScreenMode.CAPTURE)
             return
@@ -190,18 +215,77 @@ class ScreenService:
 
     def set_brightness(self, level: float) -> None:
         self._state.brightness = max(0.0, min(1.0, level))
-        # Fire and forget — backlight change doesn't need to block the caller.
         asyncio.create_task(self._display.set_backlight(self._state.brightness))
         self._changed()
+
+    # --- Auto alert evaluator -------------------------------------------
+
+    def _compute_alert(self) -> ScreenMode | None:
+        pct = self._state.battery_pct
+        if pct is not None:
+            in_low = (
+                self._auto_alert_active
+                and self._state.mode == ScreenMode.LOW_BATTERY
+            )
+            threshold = (
+                BATTERY_RECOVERY_THRESHOLD if in_low else BATTERY_LOW_THRESHOLD
+            )
+            if pct <= threshold:
+                return ScreenMode.LOW_BATTERY
+        svc = self._state.services
+        if not svc.camera_ok or not svc.radar_ok:
+            return ScreenMode.SENSOR_OFFLINE
+        return None
+
+    def _evaluate_alerts(self) -> None:
+        if not self._alerts_armed:
+            return
+        if self._state.mode in _AUTO_ALERT_BLOCKED_MODES:
+            return
+        if self._state.mode in (ScreenMode.CAPTURE, ScreenMode.RESULT):
+            return
+        desired = self._compute_alert()
+        if desired is None:
+            if self._auto_alert_active:
+                restore = self._pre_alert_mode or ScreenMode.HOME
+                logger.info("Auto alert cleared → restoring %s", restore.value)
+                self._auto_alert_active = False
+                self._pre_alert_mode = None
+                if self._state.mode != restore:
+                    self._state.mode = restore
+                    if restore == ScreenMode.RESULT:
+                        self._result_shown_at = time.monotonic()
+                    self._changed()
+            return
+        if not self._auto_alert_active:
+            if self._state.mode not in _ALERT_MODES:
+                self._pre_alert_mode = self._state.mode
+            self._auto_alert_active = True
+        if self._state.mode != desired:
+            logger.info(
+                "Auto alert → %s (was %s)",
+                desired.value, self._state.mode.value,
+            )
+            self._state.mode = desired
+            self._result_shown_at = None
+            self._changed()
+
+    def _maybe_auto_return_from_result(self) -> None:
+        if self._state.mode != ScreenMode.RESULT:
+            return
+        if self._result_shown_at is None:
+            return
+        if time.monotonic() - self._result_shown_at < RESULT_HOLD_SECONDS:
+            return
+        logger.info("Result auto-return → HOME after %.1fs", RESULT_HOLD_SECONDS)
+        self.set_mode(ScreenMode.HOME)
 
     # --- Render loop ----------------------------------------------------
 
     async def _run(self) -> None:
         frame_period = 1.0 / max(1, self._config.target_fps)
         next_tick = time.monotonic()
-
         while not self._stop.is_set():
-            # Wait until either it's time for the next frame, or state changed.
             now = time.monotonic()
             sleep_for = max(0.0, next_tick - now)
             if sleep_for > 0:
@@ -209,32 +293,25 @@ class ScreenService:
                     await asyncio.wait_for(self._wake.wait(), timeout=sleep_for)
                 except asyncio.TimeoutError:
                     pass
-
             self._wake.clear()
             if self._stop.is_set():
                 break
-
             current_clock = time.strftime("%H:%M")
             if self._state.clock_hhmm != current_clock:
                 self._state.clock_hhmm = current_clock
                 self._publish_state()
-
+            self._maybe_auto_return_from_result()
             self._state.frame_counter += 1
             t_start = time.monotonic()
             try:
                 img = screens.render(self._state)
                 await self._display.show(img)
             except Exception:
-                # Don't let a render bug kill the service.
                 logger.exception("Screen render failed")
             elapsed = time.monotonic() - t_start
-
-            # Schedule the next tick. If we're behind, snap to "now" so we
-            # don't burn CPU trying to catch up.
             next_tick += frame_period
             if next_tick < time.monotonic() - frame_period:
                 next_tick = time.monotonic() + frame_period
-
             if elapsed > frame_period * 1.5:
                 logger.debug(
                     "Slow frame: %.1f ms (budget %.1f ms)",
